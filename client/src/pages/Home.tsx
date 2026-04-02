@@ -1,914 +1,866 @@
 /**
- * Home — UCSI预科招生国内市场深度调研报告
- * Design: 商业白皮书 (Executive Briefing) 风格
- * - 深靛蓝 (#1E3A5F) + 翡翠绿 (#059669) 配色
- * - Playfair Display + Space Grotesk + Noto Sans SC 字体
- * - 大量留白、结构化叙事、交互式图表
+ * UCSI预科招生 · 国内市场深度调研报告
+ * 设计风格：商业白皮书 · 深靛蓝+翡翠绿配色 · 杂志式排版
+ * 包含：全渠道分析、KOL对标、用户画像、代理商体系、行动路线图
  */
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, PieChart, Pie, Cell, RadarChart, Radar, PolarGrid,
-  PolarAngleAxis, PolarRadiusAxis, Legend, AreaChart, Area, ComposedChart,
+  RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
+  ScatterChart, Scatter, ResponsiveContainer, Cell,
 } from "recharts";
-import SideNav from "@/components/SideNav";
-import Section from "@/components/Section";
-import InsightCard from "@/components/InsightCard";
-import MetricCard from "@/components/MetricCard";
-import { useInView } from "@/hooks/useInView";
 import {
-  IMAGES, KEY_METRICS, STUDENT_GROWTH_DATA, COST_COMPARISON_DATA,
-  COMPETITOR_DATA, CHANNEL_DATA, PAIN_POINTS, CAC_COMPARISON,
-  UCSI_ADVANTAGE, ACTION_TIMELINE, REVENUE_MODEL, MARKET_SHARE_DATA,
-  CHANNEL_RADAR_DATA,
-} from "@/lib/reportData";
+  channelData, userPersonas, kolBenchmarks,
+  agencySystem, channelCostData, actionRoadmap, revenueModel
+} from "@/lib/reportData2";
 
-const CHART_COLORS = ["#1E3A5F", "#059669", "#D97706", "#2563EB", "#DC2626", "#7C3AED"];
+// ===== 工具函数 =====
+function useInView(threshold = 0.15) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [inView, setInView] = useState(false);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(([e]) => { if (e.isIntersecting) setInView(true); }, { threshold });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [threshold]);
+  return { ref, inView };
+}
 
-function HeroSection() {
+function useCountUp(target: number, active: boolean, duration = 1500) {
+  const [val, setVal] = useState(0);
+  useEffect(() => {
+    if (!active) return;
+    let start = 0;
+    const step = target / (duration / 16);
+    const timer = setInterval(() => {
+      start += step;
+      if (start >= target) { setVal(target); clearInterval(timer); }
+      else setVal(Math.floor(start));
+    }, 16);
+    return () => clearInterval(timer);
+  }, [active, target, duration]);
+  return val;
+}
+
+// ===== 侧边导航 =====
+const navItems = [
+  { id: "overview", label: "行业概览" },
+  { id: "channels", label: "渠道全景" },
+  { id: "kol", label: "KOL对标" },
+  { id: "personas", label: "用户画像" },
+  { id: "agency", label: "代理体系" },
+  { id: "roadmap", label: "行动路线" },
+];
+
+function SideNav({ active }: { active: string }) {
   return (
-    <section id="overview" className="relative min-h-[80vh] flex items-end overflow-hidden">
-      <div className="absolute inset-0">
-        <img
-          src={IMAGES.hero}
-          alt="Kuala Lumpur skyline"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0B1426] via-[#0B1426]/70 to-[#0B1426]/20" />
-      </div>
-      <div className="relative z-10 container max-w-5xl pb-16 pt-32 lg:pl-64">
-        <motion.div
-          initial={{ opacity: 0, y: 40 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
+    <nav className="fixed left-6 top-1/2 -translate-y-1/2 z-50 hidden xl:flex flex-col gap-3">
+      {navItems.map((item) => (
+        <a
+          key={item.id}
+          href={`#${item.id}`}
+          className="flex items-center gap-2 group"
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById(item.id)?.scrollIntoView({ behavior: "smooth" });
+          }}
         >
-          <div className="text-amber-400/80 text-xs font-semibold tracking-[0.3em] uppercase mb-4">
-            Market Research Report · 2026
-          </div>
-          <h1
-            className="text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6"
-            style={{ fontFamily: "var(--font-display)" }}
-          >
-            马来西亚大学预科招生<br />
-            <span className="text-amber-400">国内市场深度调研</span>
-          </h1>
-          <p className="text-lg text-white/70 max-w-2xl leading-relaxed mb-8">
-            聚焦UCSI思特雅大学中国预科项目，深度剖析国内留学中介行业竞争格局、
-            线上线下渠道生态、家长核心痛点与可执行行动方案。
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs text-white/80 border border-white/10">
-              竞争格局分析
-            </span>
-            <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs text-white/80 border border-white/10">
-              渠道生态研究
-            </span>
-            <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs text-white/80 border border-white/10">
-              家长痛点洞察
-            </span>
-            <span className="px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs text-white/80 border border-white/10">
-              行动方案规划
-            </span>
-          </div>
-        </motion.div>
-      </div>
-    </section>
+          <div className={`w-2 h-2 rounded-full transition-all duration-300 ${active === item.id ? "bg-blue-600 scale-150" : "bg-gray-300 group-hover:bg-blue-400"}`} />
+          <span className={`text-xs font-medium transition-all duration-300 ${active === item.id ? "text-blue-600 opacity-100" : "text-gray-400 opacity-0 group-hover:opacity-100"}`}>
+            {item.label}
+          </span>
+        </a>
+      ))}
+    </nav>
   );
 }
 
-function MetricsBar() {
+// ===== 渠道卡片 =====
+function ChannelCard({ channel, onClick }: { channel: typeof channelData[0]; onClick: () => void }) {
   return (
-    <div className="bg-white border-y border-border shadow-sm lg:ml-56">
-      <div className="container max-w-5xl">
-        <div className="grid grid-cols-2 md:grid-cols-4 divide-x divide-border">
-          {KEY_METRICS.map((m) => (
-            <MetricCard key={m.label} {...m} />
+    <div
+      className="cursor-pointer rounded-xl border border-gray-100 p-5 hover:shadow-lg transition-all duration-300 hover:-translate-y-1"
+      style={{ backgroundColor: channel.bgColor, borderColor: channel.color + "30" }}
+      onClick={onClick}
+    >
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <span className="text-2xl">{channel.icon}</span>
+          <div>
+            <h3 className="font-bold text-gray-900 text-base">{channel.name}</h3>
+            <span className="text-xs text-gray-500">月活 {channel.mau}</span>
+          </div>
+        </div>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4, 5].map((i) => (
+            <div
+              key={i}
+              className="w-2 h-2 rounded-full"
+              style={{ backgroundColor: i <= channel.priority ? channel.color : "#E5E7EB" }}
+            />
           ))}
+        </div>
+      </div>
+      <p className="text-xs text-gray-600 mb-3 leading-relaxed">{channel.userProfile}</p>
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium px-2 py-1 rounded-full" style={{ backgroundColor: channel.color + "20", color: channel.color }}>
+          {channel.phase}
+        </span>
+        <span className="text-xs text-gray-500">获客成本: {channel.acquisitionCost}</span>
+      </div>
+    </div>
+  );
+}
+
+// ===== 渠道详情弹窗 =====
+function ChannelModal({ channel, onClose }: { channel: typeof channelData[0]; onClose: () => void }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[85vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-2xl">
+          <div className="flex items-center gap-3">
+            <span className="text-3xl">{channel.icon}</span>
+            <div>
+              <h2 className="text-xl font-bold text-gray-900">{channel.name}</h2>
+              <p className="text-sm text-gray-500">月活用户 {channel.mau}</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-gray-200">✕</button>
+        </div>
+        <div className="p-6 space-y-5">
+          {/* 核心数据 */}
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { label: "用户画像", value: channel.userProfile },
+              { label: "教育标签", value: channel.educationTag },
+              { label: "获客成本", value: channel.acquisitionCost },
+              { label: "转化率", value: channel.conversionRate },
+            ].map((item) => (
+              <div key={item.label} className="bg-gray-50 rounded-lg p-3">
+                <p className="text-xs text-gray-500 mb-1">{item.label}</p>
+                <p className="text-sm font-medium text-gray-800">{item.value}</p>
+              </div>
+            ))}
+          </div>
+          {/* 内容形式 */}
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-2 text-sm">内容形式</h3>
+            <p className="text-sm text-gray-600 bg-blue-50 rounded-lg p-3">{channel.contentForm}</p>
+          </div>
+          {/* 运营策略 */}
+          <div>
+            <h3 className="font-semibold text-gray-800 mb-2 text-sm">运营策略</h3>
+            <ul className="space-y-2">
+              {channel.strategy.map((s, i) => (
+                <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
+                  <span className="w-5 h-5 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center text-xs flex-shrink-0 mt-0.5">{i + 1}</span>
+                  {s}
+                </li>
+              ))}
+            </ul>
+          </div>
+          {/* 爆款选题 */}
+          {channel.hotTopics.length > 0 && (
+            <div>
+              <h3 className="font-semibold text-gray-800 mb-2 text-sm">爆款选题库</h3>
+              <div className="space-y-2">
+                {channel.hotTopics.map((topic, i) => (
+                  <div key={i} className="flex items-center gap-2 text-sm text-gray-700 bg-amber-50 rounded-lg px-3 py-2">
+                    <span className="text-amber-500">💡</span>
+                    {topic}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+          {/* 实战数据 */}
+          {channel.kpiData && (
+            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <p className="text-xs text-green-600 font-medium mb-1">行业实战数据</p>
+              <p className="text-sm text-green-800">{channel.kpiData}</p>
+            </div>
+          )}
         </div>
       </div>
     </div>
   );
 }
 
-function MarketSection() {
-  const { isInView, ref } = useInView(0.2);
+// ===== 用户画像卡片 =====
+function PersonaCard({ persona, isActive, onClick }: { persona: typeof userPersonas[0]; isActive: boolean; onClick: () => void }) {
   return (
-    <Section id="market" number="01" title="行业现状" subtitle="中国留学市场与马来西亚赛道全景">
-      <div className="space-y-12">
-        {/* 市场概述 */}
-        <div className="grid md:grid-cols-5 gap-8 items-start">
-          <div className="md:col-span-3 space-y-4">
-            <p className="text-muted-foreground leading-relaxed">
-              中国留学市场规模已突破<strong className="text-foreground">7000亿元</strong>，
-              2024年出国留学人数达71万人。在"性价比为王"的新趋势下，马来西亚从"小众备选"
-              跃升为"绝对主力"目的地。2024年中国学生赴马申请量达<strong className="text-foreground">56,198人</strong>，
-              占全球申请量的33.34%，五年暴涨274%。
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              留学中介行业自2017年取消资质审批后，准入门槛极低，市场参与者从头部上市公司到个人博主，
-              竞争格局高度碎片化。行业正从"信息差赚钱"向"服务质量竞争"转型，
-              自媒体获客能力成为机构生存的关键分水岭。
-            </p>
-            <InsightCard
-              title="马来西亚是增长最快的留学目的地"
-              content="中国学生申请量5年增长274%，远超英美澳等传统目的地。本科申请是主力，占总申请量50%以上。"
-              color="green"
-            />
+    <div
+      className={`cursor-pointer rounded-xl border-2 p-5 transition-all duration-300 ${isActive ? "shadow-lg scale-105" : "hover:shadow-md hover:scale-102"}`}
+      style={{
+        borderColor: isActive ? persona.color : "#E5E7EB",
+        backgroundColor: isActive ? persona.color + "08" : "white",
+      }}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <span className="text-3xl">{persona.icon}</span>
+        <div>
+          <h3 className="font-bold text-gray-900">{persona.name}</h3>
+          <div className="flex items-center gap-2">
+            <div className="h-2 rounded-full bg-gray-100 w-20 overflow-hidden">
+              <div className="h-full rounded-full" style={{ width: `${persona.percentage}%`, backgroundColor: persona.color }} />
+            </div>
+            <span className="text-sm font-medium" style={{ color: persona.color }}>{persona.percentage}%</span>
           </div>
-          <div className="md:col-span-2">
-            <img
-              src={IMAGES.marketAnalysis}
-              alt="市场分析"
-              className="rounded-lg shadow-md w-full"
-            />
-          </div>
-        </div>
-
-        {/* 增长趋势图 */}
-        <div ref={ref} className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            中国学生赴马来西亚留学申请量趋势
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">2019-2024年 · 数据来源: EMGS</p>
-          <ResponsiveContainer width="100%" height={350}>
-            <ComposedChart data={STUDENT_GROWTH_DATA}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="year" tick={{ fontSize: 13 }} />
-              <YAxis yAxisId="left" tick={{ fontSize: 13 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 13 }} unit="%" />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number, name: string) =>
-                  name === "students" ? [`${value.toLocaleString()} 人`, "申请人数"] : [`${value}%`, "同比增长"]
-                }
-              />
-              <Legend formatter={(value) => value === "students" ? "申请人数" : "同比增长率"} />
-              <Bar yAxisId="left" dataKey="students" fill="#1E3A5F" radius={[4, 4, 0, 0]} barSize={45} />
-              <Line yAxisId="right" type="monotone" dataKey="growth" stroke="#059669" strokeWidth={2.5} dot={{ r: 5, fill: "#059669" }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 费用对比 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            各国留学年均费用对比
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">单位: 万元人民币/年 · 含学费+生活费</p>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={COST_COMPARISON_DATA} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis type="number" tick={{ fontSize: 13 }} unit="万" />
-              <YAxis dataKey="country" type="category" tick={{ fontSize: 13 }} width={70} />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = { tuition: "学费", living: "生活费" };
-                  return [`${value}万/年`, labels[name] || name];
-                }}
-              />
-              <Legend formatter={(v) => v === "tuition" ? "学费" : "生活费"} />
-              <Bar dataKey="tuition" stackId="a" fill="#1E3A5F" radius={[0, 0, 0, 0]} />
-              <Bar dataKey="living" stackId="a" fill="#059669" radius={[0, 4, 4, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-          <InsightCard
-            title="马来西亚留学费用仅为英美的1/5"
-            content="年均总费用约8-10万人民币，是普通工薪家庭可承受的范围。UCSI预科学费约4万/年，在马来西亚私立大学中也属于低位。"
-            color="green"
-          />
         </div>
       </div>
-    </Section>
+      <div className="grid grid-cols-2 gap-2 text-xs text-gray-600">
+        <div><span className="text-gray-400">年龄：</span>{persona.studentAge}</div>
+        <div><span className="text-gray-400">收入：</span>{persona.income}</div>
+        <div className="col-span-2"><span className="text-gray-400">地域：</span>{persona.region}</div>
+      </div>
+    </div>
   );
 }
 
-function CompetitorSection() {
-  const [activeTab, setActiveTab] = useState<"head" | "medium" | "small">("head");
+// ===== 主组件 =====
+export default function Home() {
+  const [activeNav, setActiveNav] = useState("overview");
+  const [selectedChannel, setSelectedChannel] = useState<typeof channelData[0] | null>(null);
+  const [activePersona, setActivePersona] = useState(0);
+  const [activeAgencyTab, setActiveAgencyTab] = useState<"b" | "c">("b");
+
+  // 数字动画
+  const { ref: statsRef, inView: statsInView } = useInView();
+  const n1 = useCountUp(5800, statsInView);
+  const n2 = useCountUp(56198, statsInView);
+  const n3 = useCountUp(274, statsInView);
+  const n4 = useCountUp(7, statsInView);
+
+  // 滚动监听
+  useEffect(() => {
+    const handleScroll = () => {
+      const sections = navItems.map((n) => document.getElementById(n.id));
+      const scrollY = window.scrollY + window.innerHeight / 3;
+      for (let i = sections.length - 1; i >= 0; i--) {
+        const el = sections[i];
+        if (el && el.offsetTop <= scrollY) {
+          setActiveNav(navItems[i].id);
+          break;
+        }
+      }
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const radarData = channelData.slice(0, 6).map((c) => ({
+    channel: c.name,
+    优先级: c.priority,
+    转化率: c.conversionRate === "最高（信任基础最强）" ? 5 : c.conversionRate === "高（精准流量）" ? 4 : c.conversionRate === "中高（深度种草，决策质量高）" ? 3 : 2,
+    获客难度: c.difficulty,
+  }));
+
+  const costChartData = channelCostData.map((d) => ({
+    name: d.channel,
+    获客成本: Math.min(d.cpa, 1000),
+    转化质量: d.conversion,
+  }));
+
+  const revenueChartData = revenueModel.map((r) => ({
+    name: r.scenario,
+    年营收: r.revenue,
+    年成本: r.cost,
+    年利润: r.profit,
+  }));
+
+  const persona = userPersonas[activePersona];
+
   return (
-    <Section id="competitors" number="02" title="竞争格局" subtitle="国内留学中介行业竞争态势全景">
-      <div className="space-y-12">
-        <div className="grid md:grid-cols-5 gap-8 items-start">
-          <div className="md:col-span-3 space-y-4">
-            <p className="text-muted-foreground leading-relaxed">
-              国内留学中介市场高度碎片化，头部机构（新东方、启德、金吉列等）占据约35%市场份额，
-              但其马来西亚业务占比极小。中型专业机构和小型工作室/个人博主各占约25%。
-              值得注意的是，院校直招和学生自助申请的比例正在快速上升，已达15%。
-            </p>
-            <p className="text-muted-foreground leading-relaxed">
-              头部机构面临"大而不精"的困境——服务标准化导致个性化不足，顾问流动性大影响服务连续性。
-              这恰恰为专注马来西亚赛道的垂直玩家创造了差异化空间。
-            </p>
-          </div>
-          <div className="md:col-span-2">
-            <img src={IMAGES.competition} alt="竞争格局" className="rounded-lg shadow-md w-full" />
-          </div>
-        </div>
+    <div className="min-h-screen bg-gray-50 font-sans">
+      <SideNav active={activeNav} />
+      {selectedChannel && <ChannelModal channel={selectedChannel} onClose={() => setSelectedChannel(null)} />}
 
-        {/* 市场份额饼图 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            留学中介市场份额分布
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">按机构类型划分</p>
-          <div className="flex flex-col md:flex-row items-center gap-8">
-            <ResponsiveContainer width="100%" height={300} className="max-w-sm">
-              <PieChart>
-                <Pie
-                  data={MARKET_SHARE_DATA}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={120}
-                  paddingAngle={3}
-                  dataKey="value"
-                >
-                  {MARKET_SHARE_DATA.map((entry, idx) => (
-                    <Cell key={idx} fill={entry.fill} />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value: number) => [`${value}%`, "市场份额"]} />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="space-y-3 flex-1">
-              {MARKET_SHARE_DATA.map((item) => (
-                <div key={item.name} className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: item.fill }} />
-                  <span className="text-sm text-muted-foreground flex-1">{item.name}</span>
-                  <span className="text-sm font-semibold" style={{ fontFamily: "var(--font-heading)" }}>
-                    {item.value}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          </div>
+      {/* ===== Hero ===== */}
+      <section id="overview" className="relative bg-gradient-to-br from-slate-900 via-blue-950 to-slate-900 text-white overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-10 w-72 h-72 rounded-full bg-blue-400 blur-3xl" />
+          <div className="absolute bottom-10 right-20 w-96 h-96 rounded-full bg-emerald-400 blur-3xl" />
         </div>
+        <div className="relative max-w-6xl mx-auto px-6 py-20">
+          <div className="inline-flex items-center gap-2 bg-blue-500/20 border border-blue-400/30 rounded-full px-4 py-2 text-sm text-blue-300 mb-6">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            2025-2026 深度调研报告 · 国内市场版
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black mb-4 leading-tight">
+            UCSI预科招生<br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-emerald-400">国内市场竞争图谱</span>
+          </h1>
+          <p className="text-lg text-slate-300 max-w-2xl mb-10 leading-relaxed">
+            全渠道获客策略 · KOL博主对标 · 用户画像分层 · 双轨代理商体系设计<br />
+            帮你在国内社媒战场中找到突破口，建立可持续的招生增长引擎
+          </p>
 
-        {/* 竞争对手详情 */}
-        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="flex border-b border-border">
+          {/* 核心数据 */}
+          <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {[
-              { key: "head" as const, label: "头部机构" },
-              { key: "medium" as const, label: "中型机构" },
-              { key: "small" as const, label: "小型/个人" },
-            ].map((tab) => (
-              <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
-                className={`flex-1 py-3.5 text-sm font-medium transition-all border-b-2 ${
-                  activeTab === tab.key
-                    ? "border-primary text-primary bg-primary/5"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
+              { val: n1, suffix: "亿", label: "留学市场规模（元）", color: "from-blue-400 to-blue-600" },
+              { val: n2, suffix: "人", label: "在马中国学生（2024）", color: "from-emerald-400 to-emerald-600" },
+              { val: n3, suffix: "%", label: "5年增长幅度", color: "from-amber-400 to-amber-600" },
+              { val: n4, suffix: "大", label: "国内主流获客渠道", color: "from-purple-400 to-purple-600" },
+            ].map((item, i) => (
+              <div key={i} className="bg-white/5 backdrop-blur border border-white/10 rounded-xl p-4">
+                <div className={`text-3xl font-black bg-gradient-to-r ${item.color} bg-clip-text text-transparent`}>
+                  {item.val.toLocaleString()}{item.suffix}
+                </div>
+                <div className="text-xs text-slate-400 mt-1">{item.label}</div>
+              </div>
             ))}
           </div>
-          <div className="p-6">
-            {activeTab === "head" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 font-semibold text-foreground">机构</th>
-                      <th className="text-left py-3 px-2 font-semibold text-foreground">规模</th>
-                      <th className="text-left py-3 px-2 font-semibold text-foreground">核心优势</th>
-                      <th className="text-left py-3 px-2 font-semibold text-foreground">主要劣势</th>
-                      <th className="text-left py-3 px-2 font-semibold text-foreground">收费</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPETITOR_DATA.headAgencies.map((c) => (
-                      <tr key={c.name} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-3 px-2 font-medium">{c.name}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.scale}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.strength}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.weakness}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.price}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {activeTab === "medium" && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-border">
-                      <th className="text-left py-3 px-2 font-semibold">机构</th>
-                      <th className="text-left py-3 px-2 font-semibold">专注方向</th>
-                      <th className="text-left py-3 px-2 font-semibold">优势</th>
-                      <th className="text-left py-3 px-2 font-semibold">劣势</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {COMPETITOR_DATA.mediumAgencies.map((c) => (
-                      <tr key={c.name} className="border-b border-border/50 hover:bg-muted/30">
-                        <td className="py-3 px-2 font-medium">{c.name}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.focus}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.strength}</td>
-                        <td className="py-3 px-2 text-muted-foreground">{c.weakness}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-            {activeTab === "small" && (
-              <div className="space-y-4">
-                {COMPETITOR_DATA.smallStudios.map((c) => (
-                  <div key={c.name} className="p-4 bg-muted/30 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-medium">{c.name}</span>
-                      <span className="text-xs px-2 py-0.5 bg-primary/10 text-primary rounded-full">{c.count}</span>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <span className="text-muted-foreground">优势: </span>
-                        <span className="text-foreground">{c.strength}</span>
-                      </div>
-                      <div>
-                        <span className="text-muted-foreground">劣势: </span>
-                        <span className="text-foreground">{c.weakness}</span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+        </div>
+      </section>
+
+      {/* ===== 渠道全景 ===== */}
+      <section id="channels" className="max-w-6xl mx-auto px-6 py-16">
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-1 h-8 bg-blue-600 rounded-full" />
+            <h2 className="text-2xl font-black text-gray-900">国内全渠道获客图谱</h2>
           </div>
+          <p className="text-gray-500 ml-4">8大主流渠道深度解析，点击任意渠道查看详细运营策略</p>
         </div>
 
-        <InsightCard
-          title="头部机构的马来西亚业务占比极小，这是你的机会"
-          content="新东方、启德等头部机构的核心业务集中在英美澳，马来西亚只是'附带'产品。专注马来西亚的垂直玩家可以在服务深度和专业度上形成碾压优势。"
-          color="amber"
-        />
-      </div>
-    </Section>
-  );
-}
-
-function ChannelSection() {
-  return (
-    <Section id="channels" number="03" title="渠道生态" subtitle="线上线下获客渠道全景分析">
-      <div className="space-y-12">
-        <p className="text-muted-foreground leading-relaxed max-w-3xl">
-          留学行业的获客渠道正在经历深刻变革。传统的百度SEM获客成本已飙升至200元/点击，
-          而小红书等新媒体平台的私信咨询成本仅10元左右。能否掌握自媒体获客能力，
-          已成为留学机构能否生存和扩张的关键分水岭。
-        </p>
-
-        {/* 渠道效果对比图 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            各平台获客效果对比
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">获客成本 vs 转化率 · 气泡大小代表潜力评分</p>
-          <ResponsiveContainer width="100%" height={350}>
-            <BarChart data={CHANNEL_DATA}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="platform" tick={{ fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = { cac: "获客成本", conversionRate: "转化率" };
-                  return [name === "cac" ? `${value}元` : `${value}%`, labels[name] || name];
-                }}
-              />
-              <Legend formatter={(v) => v === "cac" ? "获客成本(元)" : "转化率(%)"} />
-              <Bar dataKey="cac" fill="#1E3A5F" radius={[4, 4, 0, 0]} barSize={30} />
-              <Bar dataKey="conversionRate" fill="#059669" radius={[4, 4, 0, 0]} barSize={30} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 渠道详情卡片 */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {CHANNEL_DATA.slice(0, 4).map((ch, idx) => (
-            <motion.div
-              key={ch.platform}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              className="bg-white rounded-xl border border-border p-6 shadow-sm hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h4 className="font-semibold text-lg" style={{ fontFamily: "var(--font-heading)" }}>
-                  {ch.platform}
-                </h4>
-                <div className="flex gap-1">
-                  {Array.from({ length: 5 }).map((_, i) => (
-                    <div
-                      key={i}
-                      className={`w-2 h-2 rounded-full ${i < ch.potential ? "bg-primary" : "bg-border"}`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">获客成本</div>
-                  <div className="text-xl font-bold text-primary" style={{ fontFamily: "var(--font-heading)" }}>
-                    {ch.cac}元
-                  </div>
-                </div>
-                <div>
-                  <div className="text-xs text-muted-foreground mb-1">转化率</div>
-                  <div className="text-xl font-bold text-[#059669]" style={{ fontFamily: "var(--font-heading)" }}>
-                    {ch.conversionRate}%
-                  </div>
-                </div>
-              </div>
-              <div className="space-y-2 text-sm">
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground shrink-0">用户画像:</span>
-                  <span className="text-foreground">{ch.userProfile}</span>
-                </div>
-                <div className="flex gap-2">
-                  <span className="text-muted-foreground shrink-0">内容形式:</span>
-                  <span className="text-foreground">{ch.contentType}</span>
-                </div>
-              </div>
-            </motion.div>
+        {/* 渠道卡片网格 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
+          {channelData.map((ch) => (
+            <ChannelCard key={ch.id} channel={ch} onClick={() => setSelectedChannel(ch)} />
           ))}
         </div>
-
-        {/* 小红书重点分析 */}
-        <div className="bg-gradient-to-br from-[#1E3A5F]/5 to-[#059669]/5 rounded-xl border border-border p-8">
-          <h3 className="text-xl font-bold mb-4" style={{ fontFamily: "var(--font-heading)" }}>
-            小红书：留学赛道的核心战场
-          </h3>
-          <div className="grid md:grid-cols-3 gap-6 mb-6">
-            <div className="bg-white/80 rounded-lg p-4">
-              <div className="text-2xl font-bold text-primary mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-                10元
-              </div>
-              <div className="text-sm text-muted-foreground">单条私信咨询成本</div>
-            </div>
-            <div className="bg-white/80 rounded-lg p-4">
-              <div className="text-2xl font-bold text-[#059669] mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-                0.06元
-              </div>
-              <div className="text-sm text-muted-foreground">平均点击价格</div>
-            </div>
-            <div className="bg-white/80 rounded-lg p-4">
-              <div className="text-2xl font-bold text-[#D97706] mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-                15-20%
-              </div>
-              <div className="text-sm text-muted-foreground">行业标准佣金比例</div>
-            </div>
-          </div>
-          <p className="text-muted-foreground leading-relaxed mb-4">
-            实操案例显示：半年时间运营留学账号涨粉5000+，引流3500多个留学客户到微信，
-            团队转化成交近200单。另一案例中，仅2个月做新西兰留学就成交12个学生，累计佣金7万+。
-            小红书留学赛道的核心逻辑是"只负责引流，不做成交"——将客户引流到微信后，
-            由专业留学顾问完成转化。
-          </p>
-          <InsightCard
-            title="小红书是你的第一战场"
-            content="获客成本最低（10元/私信）、用户精准度最高（18-34岁女性为主）、入局门槛最低（个体户即可投流）。建议优先集中资源攻克小红书渠道。"
-            color="blue"
-          />
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function PainPointSection() {
-  return (
-    <Section id="painpoints" number="04" title="家长痛点" subtitle="决策过程中的核心焦虑与需求洞察">
-      <div className="space-y-12">
-        <div className="grid md:grid-cols-5 gap-8 items-start">
-          <div className="md:col-span-3">
-            <p className="text-muted-foreground leading-relaxed mb-4">
-              理解家长和学生的核心痛点，是制定有效营销策略的基础。通过对大量留学论坛、
-              社交媒体讨论和行业报告的分析，我们识别出六大核心痛点，并按严重程度排序。
-              每个痛点都对应着UCSI预科项目的独特解决方案。
-            </p>
-          </div>
-          <div className="md:col-span-2">
-            <img src={IMAGES.parentStudent} alt="家长与学生" className="rounded-lg shadow-md w-full" />
-          </div>
-        </div>
-
-        {/* 痛点严重度图 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-6" style={{ fontFamily: "var(--font-heading)" }}>
-            家长痛点严重程度评估
-          </h3>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={PAIN_POINTS} layout="vertical">
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 12 }} />
-              <YAxis dataKey="title" type="category" tick={{ fontSize: 11 }} width={140} />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number) => [`${value}/100`, "严重程度"]}
-              />
-              <Bar dataKey="severity" radius={[0, 4, 4, 0]} barSize={24}>
-                {PAIN_POINTS.map((_, idx) => (
-                  <Cell key={idx} fill={idx < 2 ? "#DC2626" : idx < 4 ? "#D97706" : "#1E3A5F"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 痛点详情卡片 */}
-        <div className="grid md:grid-cols-2 gap-6">
-          {PAIN_POINTS.map((pp, idx) => (
-            <motion.div
-              key={pp.id}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.08 }}
-              className="bg-white rounded-xl border border-border p-6 shadow-sm"
-            >
-              <div className="flex items-center gap-3 mb-3">
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center text-white text-sm font-bold ${
-                  pp.severity >= 90 ? "bg-red-500" : pp.severity >= 80 ? "bg-amber-500" : "bg-primary"
-                }`}>
-                  {pp.severity}
-                </div>
-                <h4 className="font-semibold" style={{ fontFamily: "var(--font-heading)" }}>
-                  {pp.title}
-                </h4>
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed mb-4">{pp.description}</p>
-              <div className="bg-[#059669]/5 border-l-2 border-[#059669] rounded-r-md p-3">
-                <div className="text-xs font-semibold text-[#059669] mb-1">UCSI解决方案</div>
-                <p className="text-sm text-foreground">{pp.solution}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
-      </div>
-    </Section>
-  );
-}
-
-function CostSection() {
-  return (
-    <Section id="costs" number="05" title="获客成本" subtitle="各渠道获客成本与投资回报率深度对比">
-      <div className="space-y-12">
-        <p className="text-muted-foreground leading-relaxed max-w-3xl">
-          获客成本（CAC）是决定业务可持续性的核心指标。在留学行业，不同渠道的获客成本差异巨大——
-          从百度SEM的200元/点击到口碑转介绍的零成本。选择正确的渠道组合，
-          直接决定了你能否在激烈竞争中存活并盈利。
-        </p>
 
         {/* 获客成本对比图 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            各渠道获客成本 vs 投资回报率
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">获客成本越低、ROI越高的渠道越值得优先投入</p>
-          <ResponsiveContainer width="100%" height={350}>
-            <ComposedChart data={CAC_COMPARISON}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="channel" tick={{ fontSize: 11 }} angle={-15} textAnchor="end" height={60} />
-              <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 12 }} />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number, name: string) =>
-                  name === "cac" ? [`${value}元`, "获客成本"] : [`${value}x`, "ROI倍数"]
-                }
-              />
-              <Legend formatter={(v) => v === "cac" ? "获客成本(元)" : "ROI倍数"} />
-              <Bar yAxisId="left" dataKey="cac" fill="#1E3A5F" radius={[4, 4, 0, 0]} barSize={30} />
-              <Line yAxisId="right" type="monotone" dataKey="roi" stroke="#059669" strokeWidth={2.5} dot={{ r: 5, fill: "#059669" }} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* 渠道优先级推荐 */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-[#059669]/5 border border-[#059669]/20 rounded-xl p-6">
-            <div className="text-xs font-semibold text-[#059669] tracking-wider uppercase mb-3">第一优先级</div>
-            <h4 className="font-bold text-lg mb-2" style={{ fontFamily: "var(--font-heading)" }}>小红书 + 微信私域</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              小红书负责公域获客（10元/私信），微信负责私域转化（15%转化率）。
-              这是成本最低、效果最好的组合，适合0-6个月的起步期。
-            </p>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-1">各渠道获客成本对比</h3>
+            <p className="text-xs text-gray-400 mb-4">（百度SEM已按比例压缩显示，实际约6000元/客户）</p>
+            <ResponsiveContainer width="100%" height={260}>
+              <BarChart data={costChartData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 11 }} width={70} />
+                <Tooltip formatter={(v: number, name: string) => [name === "获客成本" ? `${v}元` : `${v}%`, name]} />
+                <Bar dataKey="获客成本" fill="#3B82F6" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-          <div className="bg-[#1E3A5F]/5 border border-[#1E3A5F]/20 rounded-xl p-6">
-            <div className="text-xs font-semibold text-[#1E3A5F] tracking-wider uppercase mb-3">第二优先级</div>
-            <h4 className="font-bold text-lg mb-2" style={{ fontFamily: "var(--font-heading)" }}>抖音 + 知乎</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              抖音用于品牌曝光和规模化获客，知乎用于深度种草和SEO长尾流量。
-              适合6-12个月的扩张期。
-            </p>
-          </div>
-          <div className="bg-[#D97706]/5 border border-[#D97706]/20 rounded-xl p-6">
-            <div className="text-xs font-semibold text-[#D97706] tracking-wider uppercase mb-3">长期建设</div>
-            <h4 className="font-bold text-lg mb-2" style={{ fontFamily: "var(--font-heading)" }}>口碑 + 线下</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              口碑转介绍是终极目标（零成本、60%转化率），线下宣讲会适合二三线城市深耕。
-              需要12个月以上的积累。
-            </p>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="font-bold text-gray-900 mb-1">渠道优先级雷达图</h3>
+            <p className="text-xs text-gray-400 mb-4">综合考量优先级、转化率、获客难度</p>
+            <ResponsiveContainer width="100%" height={260}>
+              <RadarChart data={radarData}>
+                <PolarGrid stroke="#E5E7EB" />
+                <PolarAngleAxis dataKey="channel" tick={{ fontSize: 10 }} />
+                <PolarRadiusAxis domain={[0, 5]} tick={{ fontSize: 9 }} />
+                <Radar name="优先级" dataKey="优先级" stroke="#3B82F6" fill="#3B82F6" fillOpacity={0.3} />
+                <Radar name="转化率" dataKey="转化率" stroke="#10B981" fill="#10B981" fillOpacity={0.2} />
+                <Legend />
+              </RadarChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
-        <InsightCard
-          title="获客成本决定生死线"
-          content="假设每个学生佣金4000元，百度SEM获客成本200元+转化率3%意味着每成交1单需花费6600元，直接亏损。而小红书10元获客+8%转化率，每成交1单仅需125元，利润空间巨大。"
-          color="red"
-        />
-      </div>
-    </Section>
-  );
-}
-
-function UCSISection() {
-  return (
-    <Section id="ucsi" number="06" title="UCSI竞争优势" subtitle="思特雅大学预科项目在竞品中的定位">
-      <div className="space-y-12">
-        <p className="text-muted-foreground leading-relaxed max-w-3xl">
-          在马来西亚私立大学预科项目中，UCSI凭借"QS排名最高+学费最低+直升保障"的三重优势，
-          形成了独特的竞争壁垒。以下是与主要竞品的详细对比分析。
-        </p>
-
-        {/* 对比表格 */}
-        <div className="bg-white rounded-xl border border-border shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-border">
-            <h3 className="text-lg font-semibold" style={{ fontFamily: "var(--font-heading)" }}>
-              马来西亚主要私立大学预科项目对比
-            </h3>
+        {/* 渠道优先级表 */}
+        <div className="mt-8 bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="font-bold text-gray-900">渠道优先级决策矩阵</h3>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="bg-muted/30">
-                  <th className="text-left py-3 px-4 font-semibold">维度</th>
-                  <th className="text-center py-3 px-4 font-semibold bg-primary/5 text-primary">UCSI</th>
-                  <th className="text-center py-3 px-4 font-semibold">泰莱 Taylor's</th>
-                  <th className="text-center py-3 px-4 font-semibold">双威 Sunway</th>
-                  <th className="text-center py-3 px-4 font-semibold">英迪 INTI</th>
-                  <th className="text-center py-3 px-4 font-semibold">精英 HELP</th>
+                <tr className="bg-gray-50">
+                  {["渠道", "月活用户", "获客成本", "转化率", "内容形式", "启动阶段", "优先级"].map((h) => (
+                    <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-gray-500 whitespace-nowrap">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody>
-                {UCSI_ADVANTAGE.map((row, idx) => (
-                  <tr key={row.dimension} className={`border-b border-border/50 ${idx % 2 === 0 ? "" : "bg-muted/10"}`}>
-                    <td className="py-3 px-4 font-medium">{row.dimension}</td>
-                    <td className="py-3 px-4 text-center bg-primary/5 font-semibold text-primary">{row.ucsi}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{row.taylor}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{row.sunway}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{row.inti}</td>
-                    <td className="py-3 px-4 text-center text-muted-foreground">{row.help}</td>
+                {channelData.map((ch, i) => (
+                  <tr key={ch.id} className={`border-t border-gray-50 hover:bg-gray-50 cursor-pointer ${i % 2 === 0 ? "" : "bg-gray-50/50"}`} onClick={() => setSelectedChannel(ch)}>
+                    <td className="px-4 py-3 font-medium text-gray-900">
+                      <span className="mr-2">{ch.icon}</span>{ch.name}
+                    </td>
+                    <td className="px-4 py-3 text-gray-600">{ch.mau}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{ch.acquisitionCost}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{ch.conversionRate}</td>
+                    <td className="px-4 py-3 text-gray-600 text-xs">{ch.contentForm}</td>
+                    <td className="px-4 py-3">
+                      <span className={`text-xs px-2 py-1 rounded-full ${ch.phase === "第一阶段" ? "bg-blue-100 text-blue-700" : "bg-amber-100 text-amber-700"}`}>
+                        {ch.phase}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((s) => (
+                          <div key={s} className={`w-3 h-3 rounded-sm ${s <= ch.priority ? "bg-blue-500" : "bg-gray-200"}`} />
+                        ))}
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </div>
+      </section>
 
-        {/* 三重优势 */}
-        <div className="grid md:grid-cols-3 gap-6">
-          <motion.div
-            whileHover={{ y: -4 }}
-            className="bg-gradient-to-br from-[#1E3A5F] to-[#2563EB] rounded-xl p-6 text-white"
-          >
-            <div className="text-4xl font-bold mb-2" style={{ fontFamily: "var(--font-display)" }}>#269</div>
-            <h4 className="font-semibold text-lg mb-2">QS排名最高</h4>
-            <p className="text-white/80 text-sm leading-relaxed">
-              马来西亚私立大学中QS排名最高，超越泰莱(#259差距极小)，远超双威(#446)。
-              QS前300可享上海等城市落户优惠。
-            </p>
-          </motion.div>
-          <motion.div
-            whileHover={{ y: -4 }}
-            className="bg-gradient-to-br from-[#059669] to-[#10B981] rounded-xl p-6 text-white"
-          >
-            <div className="text-4xl font-bold mb-2" style={{ fontFamily: "var(--font-display)" }}>~4万</div>
-            <h4 className="font-semibold text-lg mb-2">预科学费最低</h4>
-            <p className="text-white/80 text-sm leading-relaxed">
-              预科学费约4万人民币/年，仅为泰莱(7.5万)的一半，双威(6万)的2/3。
-              总费用约10万/年，普通家庭可承受。
-            </p>
-          </motion.div>
-          <motion.div
-            whileHover={{ y: -4 }}
-            className="bg-gradient-to-br from-[#D97706] to-[#F59E0B] rounded-xl p-6 text-white"
-          >
-            <div className="text-4xl font-bold mb-2" style={{ fontFamily: "var(--font-display)" }}>100%</div>
-            <h4 className="font-semibold text-lg mb-2">直升保障</h4>
-            <p className="text-white/80 text-sm leading-relaxed">
-              完成预科课程后保障直升UCSI本科，无需额外考试。
-              泰莱和双威的预科升本科是竞争性的，存在不确定性。
-            </p>
-          </motion.div>
+      {/* ===== KOL对标 ===== */}
+      <section id="kol" className="bg-slate-900 text-white py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-1 h-8 bg-emerald-400 rounded-full" />
+              <h2 className="text-2xl font-black text-white">KOL博主对标分析</h2>
+            </div>
+            <p className="text-slate-400 ml-4">小红书 & 抖音头部/腰部/尾部博主生态，找准你的差异化定位</p>
+          </div>
+
+          {/* KOL金字塔 */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-10">
+            {/* 小红书 */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <span className="text-red-400">📕</span> 小红书博主矩阵
+              </h3>
+              <div className="space-y-3">
+                {kolBenchmarks.xiaohongshu.map((kol, i) => (
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${kol.level === "头部" ? "bg-amber-500/20 text-amber-400" : kol.level === "腰部" ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                          {kol.level}
+                        </span>
+                        <span className="font-semibold text-white text-sm">{kol.name}</span>
+                      </div>
+                      <span className="text-xs text-slate-400">粉丝 {kol.fans}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">{kol.contentFocus}</p>
+                    <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-lg px-3 py-2">
+                      <p className="text-xs text-emerald-400">💡 学习要点：{kol.learningPoint}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* 抖音 */}
+            <div>
+              <h3 className="text-lg font-bold text-white mb-4 flex items-center gap-2">
+                <span>🎵</span> 抖音博主矩阵
+              </h3>
+              <div className="space-y-3">
+                {kolBenchmarks.douyin.map((kol, i) => (
+                  <div key={i} className="bg-white/5 border border-white/10 rounded-xl p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${kol.level === "头部" ? "bg-amber-500/20 text-amber-400" : kol.level === "腰部" ? "bg-blue-500/20 text-blue-400" : "bg-emerald-500/20 text-emerald-400"}`}>
+                          {kol.level}
+                        </span>
+                        <span className="font-semibold text-white text-sm">{kol.name}</span>
+                      </div>
+                      <span className="text-xs text-slate-400">粉丝 {kol.fans}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 mb-2">{kol.contentFocus}</p>
+                    <div className="bg-blue-500/10 border border-blue-500/20 rounded-lg px-3 py-2">
+                      <p className="text-xs text-blue-400">💡 学习要点：{kol.learningPoint}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* KOL合作策略 */}
+          <div className="bg-white/5 border border-white/10 rounded-2xl p-6">
+            <h3 className="text-lg font-bold text-white mb-4">KOL金字塔合作策略</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { level: "头部KOL", count: "2-3个", cost: "5000-2万/篇", role: "品牌声量", color: "#FBBF24" },
+                { level: "腰部KOL", count: "10-15个", cost: "1000-5000/篇", role: "主力转化", color: "#60A5FA" },
+                { level: "尾部KOC", count: "30-50个", cost: "200-1000/篇", role: "口碑铺量", color: "#34D399" },
+                { level: "素人博主", count: "100+个", cost: "50-200/篇", role: "真实感背书", color: "#A78BFA" },
+              ].map((item) => (
+                <div key={item.level} className="text-center">
+                  <div className="w-16 h-16 rounded-full mx-auto mb-3 flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: item.color + "30", border: `2px solid ${item.color}` }}>
+                    {item.count}
+                  </div>
+                  <p className="font-semibold text-white text-sm">{item.level}</p>
+                  <p className="text-xs text-slate-400 mt-1">{item.cost}</p>
+                  <p className="text-xs mt-1 font-medium" style={{ color: item.color }}>{item.role}</p>
+                </div>
+              ))}
+            </div>
+            <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4">
+                <p className="text-amber-400 font-semibold text-sm mb-2">📢 第一波：头部KOL</p>
+                <p className="text-xs text-slate-300">发布「马来西亚留学全攻略」建立话题，打响品牌声量</p>
+              </div>
+              <div className="bg-blue-500/10 border border-blue-500/20 rounded-xl p-4">
+                <p className="text-blue-400 font-semibold text-sm mb-2">🎯 第二波：腰部KOL</p>
+                <p className="text-xs text-slate-300">跟进「UCSI预科深度测评」精准种草，承担主要转化</p>
+              </div>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 rounded-xl p-4">
+                <p className="text-emerald-400 font-semibold text-sm mb-2">💬 第三波：KOC+素人</p>
+                <p className="text-xs text-slate-300">铺量「我为什么选择UCSI」真实故事，形成「到处都在讨论」氛围</p>
+              </div>
+              <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-4">
+                <p className="text-purple-400 font-semibold text-sm mb-2">🔍 第四波：搜索截流</p>
+                <p className="text-xs text-slate-300">优化「UCSI预科」「马来西亚预科」等关键词排名，截流竞品流量</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== 用户画像 ===== */}
+      <section id="personas" className="max-w-6xl mx-auto px-6 py-16">
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-1 h-8 bg-purple-600 rounded-full" />
+            <h2 className="text-2xl font-black text-gray-900">目标用户画像分层</h2>
+          </div>
+          <p className="text-gray-500 ml-4">4大核心用户群体，精准定位，差异化内容策略</p>
         </div>
 
-        <InsightCard
-          title="UCSI预科的核心卖点：排名最高、学费最低、直升保障"
-          content="这三个优势的组合在竞品中是独一无二的。营销时应反复强调这个'不可能三角'——通常排名高意味着学费高，但UCSI打破了这个规律。"
-          color="green"
-        />
-      </div>
-    </Section>
-  );
-}
-
-function ActionSection() {
-  return (
-    <Section id="action" number="07" title="行动方案" subtitle="从零到一的可执行路线图">
-      <div className="space-y-12">
-        <div className="grid md:grid-cols-5 gap-8 items-start">
-          <div className="md:col-span-3">
-            <p className="text-muted-foreground leading-relaxed">
-              基于以上调研结论，我们为你制定了分三个阶段的行动方案。
-              核心策略是"线上获客为主、线下转化为辅"，优先攻克小红书+微信组合，
-              逐步扩展到全渠道矩阵。
-            </p>
-          </div>
-          <div className="md:col-span-2">
-            <img src={IMAGES.actionPlan} alt="行动方案" className="rounded-lg shadow-md w-full" />
-          </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {userPersonas.map((p, i) => (
+            <PersonaCard key={p.id} persona={p} isActive={activePersona === i} onClick={() => setActivePersona(i)} />
+          ))}
         </div>
 
-        {/* 时间线 */}
-        <div className="space-y-8">
-          {ACTION_TIMELINE.map((phase, idx) => (
-            <motion.div
-              key={phase.phase}
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.15 }}
-              className="bg-white rounded-xl border border-border shadow-sm overflow-hidden"
-            >
-              <div className="flex items-center gap-4 p-6 border-b border-border" style={{ borderLeftWidth: 4, borderLeftColor: phase.color }}>
-                <div className="text-3xl font-bold opacity-20" style={{ fontFamily: "var(--font-display)", color: phase.color }}>
-                  {phase.phase}
+        {/* 画像详情 */}
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="p-6 border-b border-gray-100" style={{ backgroundColor: persona.color + "08" }}>
+            <div className="flex items-center gap-4">
+              <span className="text-4xl">{persona.icon}</span>
+              <div>
+                <h3 className="text-xl font-bold text-gray-900">{persona.name}</h3>
+                <div className="flex items-center gap-4 mt-1 text-sm text-gray-500">
+                  <span>占比 <strong style={{ color: persona.color }}>{persona.percentage}%</strong></span>
+                  <span>决策周期 <strong>{persona.decisionCycle}</strong></span>
+                  <span>UCSI匹配度 <strong style={{ color: persona.color }}>{persona.ucsiMatch}</strong></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 p-6">
+            {/* 基本信息 */}
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3 text-sm">基本信息</h4>
+              <div className="space-y-2 text-sm">
+                {[
+                  { label: "学生年龄", value: persona.studentAge },
+                  { label: "家长年龄", value: persona.parentAge },
+                  { label: "家庭收入", value: persona.income },
+                  { label: "主要地域", value: persona.region },
+                  { label: "成绩情况", value: persona.score },
+                ].map((item) => (
+                  <div key={item.label} className="flex gap-2">
+                    <span className="text-gray-400 w-20 flex-shrink-0">{item.label}</span>
+                    <span className="text-gray-700">{item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* 核心痛点 */}
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3 text-sm">核心痛点</h4>
+              <div className="space-y-2">
+                {persona.painPoints.map((p, i) => (
+                  <div key={i} className="bg-red-50 rounded-lg p-3">
+                    <p className="text-xs font-semibold text-red-700 mb-1">{p.point}</p>
+                    <p className="text-xs text-red-600">{p.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+            {/* 决策路径 */}
+            <div>
+              <h4 className="font-semibold text-gray-800 mb-3 text-sm">决策路径</h4>
+              <div className="space-y-2">
+                {persona.decisionPath.map((step, i) => (
+                  <div key={i} className="flex items-start gap-2">
+                    <div className="w-5 h-5 rounded-full flex items-center justify-center text-xs text-white font-bold flex-shrink-0 mt-0.5" style={{ backgroundColor: persona.color }}>
+                      {i + 1}
+                    </div>
+                    <p className="text-sm text-gray-700">{step}</p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-4 rounded-xl p-4" style={{ backgroundColor: persona.color + "10", border: `1px solid ${persona.color}30` }}>
+                <p className="text-xs font-semibold mb-1" style={{ color: persona.color }}>核心营销信息</p>
+                <p className="text-sm text-gray-700">{persona.keyMessage}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ===== 代理商体系 ===== */}
+      <section id="agency" className="bg-gradient-to-br from-slate-50 to-blue-50 py-16">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-1 h-8 bg-amber-500 rounded-full" />
+              <h2 className="text-2xl font-black text-gray-900">双轨代理商体系设计</h2>
+            </div>
+            <p className="text-gray-500 ml-4">B端主动拓展 + C端客户裂变，构建自运转的招生增长飞轮</p>
+          </div>
+
+          {/* Tab切换 */}
+          <div className="flex gap-2 mb-8">
+            {[
+              { key: "b", label: "🏢 B端主动拓展型", desc: "机构/个人代理" },
+              { key: "c", label: "👨‍👩‍👧 C端客户裂变型", desc: "家长推广大使" },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setActiveAgencyTab(tab.key as "b" | "c")}
+                className={`flex-1 rounded-xl px-4 py-3 text-left transition-all duration-200 ${activeAgencyTab === tab.key ? "bg-white shadow-md border-2 border-blue-200" : "bg-white/50 border border-gray-200 hover:bg-white"}`}
+              >
+                <p className={`font-semibold text-sm ${activeAgencyTab === tab.key ? "text-blue-700" : "text-gray-600"}`}>{tab.label}</p>
+                <p className="text-xs text-gray-400">{tab.desc}</p>
+              </button>
+            ))}
+          </div>
+
+          {activeAgencyTab === "b" ? (
+            <div className="space-y-6">
+              {/* B端分级 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {agencySystem.bEnd.tiers.map((tier) => (
+                  <div key={tier.name} className="bg-white rounded-xl p-5 shadow-sm border border-gray-100">
+                    <div className="w-10 h-10 rounded-full mb-3 flex items-center justify-center text-white font-bold text-sm" style={{ backgroundColor: tier.color }}>
+                      {tier.name[0]}
+                    </div>
+                    <h3 className="font-bold text-gray-900 mb-1">{tier.name}</h3>
+                    <p className="text-xs text-gray-500 mb-3">{tier.annual}</p>
+                    <div className="text-2xl font-black text-blue-600 mb-1">{tier.commission}</div>
+                    <p className="text-xs text-gray-400 mb-3">元/人</p>
+                    {tier.bonus !== "无" && (
+                      <div className="bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-3">
+                        <p className="text-xs text-amber-700">🎁 {tier.bonus}</p>
+                      </div>
+                    )}
+                    <div className="space-y-1">
+                      {tier.support.map((s, i) => (
+                        <div key={i} className="flex items-center gap-1 text-xs text-gray-600">
+                          <span className="text-emerald-500">✓</span> {s}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {/* 招募渠道 */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">代理商招募渠道</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {agencySystem.bEnd.recruitChannels.map((ch) => (
+                    <div key={ch.channel} className="flex items-start gap-3 bg-gray-50 rounded-xl p-4">
+                      <div className={`w-2 h-2 rounded-full mt-2 flex-shrink-0 ${ch.potential === "极高" ? "bg-red-500" : ch.potential === "高" ? "bg-amber-500" : "bg-blue-400"}`} />
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">{ch.channel}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{ch.note}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full mt-1 inline-block ${ch.potential === "极高" ? "bg-red-100 text-red-700" : ch.potential === "高" ? "bg-amber-100 text-amber-700" : "bg-blue-100 text-blue-700"}`}>
+                          潜力：{ch.potential}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* C端三级分销 */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-6">三级分销裂变体系</h3>
+                <div className="space-y-4">
+                  {agencySystem.cEnd.levels.map((level, i) => (
+                    <div key={i} className="flex items-start gap-4 p-4 rounded-xl bg-gradient-to-r from-blue-50 to-transparent border border-blue-100">
+                      <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-3 mb-1">
+                          <h4 className="font-bold text-gray-900">{level.level}</h4>
+                          <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full">{level.name}</span>
+                          <span className="text-lg font-black text-blue-600">{level.commission}</span>
+                          <span className="text-xs text-gray-500">元/人</span>
+                        </div>
+                        <p className="text-xs text-gray-500 mb-2">{level.condition}</p>
+                        <div className="bg-amber-50 rounded-lg px-3 py-2">
+                          <p className="text-xs text-amber-700">📝 示例：{level.example}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              {/* 激励机制 + 合规 */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4">激励机制</h3>
+                  <div className="space-y-3">
+                    {agencySystem.cEnd.incentives.map((item, i) => (
+                      <div key={i} className="flex items-start gap-3">
+                        <span className="text-amber-500 text-lg">🏆</span>
+                        <div>
+                          <p className="font-semibold text-gray-800 text-sm">{item.name}</p>
+                          <p className="text-xs text-gray-500">{item.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                  <h3 className="font-bold text-gray-900 mb-4">合规性设计</h3>
+                  <div className="space-y-3">
+                    {agencySystem.cEnd.compliance.map((item, i) => (
+                      <div key={i} className="flex items-start gap-2">
+                        <span className="text-emerald-500 font-bold">✓</span>
+                        <p className="text-sm text-gray-700">{item}</p>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="mt-4 bg-emerald-50 border border-emerald-200 rounded-xl p-4">
+                    <p className="text-xs text-emerald-700 font-semibold mb-1">⚠️ 重要提示</p>
+                    <p className="text-xs text-emerald-600">三级分销是法律允许的上限，切勿超过三级，避免被认定为传销</p>
+                  </div>
+                </div>
+              </div>
+              {/* 工具支持 */}
+              <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+                <h3 className="font-bold text-gray-900 mb-4">推广大使工具包</h3>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {agencySystem.cEnd.tools.map((tool, i) => (
+                    <div key={i} className="text-center p-4 bg-blue-50 rounded-xl">
+                      <div className="text-2xl mb-2">
+                        {["🔗", "🎨", "👥", "📱"][i]}
+                      </div>
+                      <p className="font-semibold text-gray-900 text-sm">{tool.name}</p>
+                      <p className="text-xs text-gray-500 mt-1">{tool.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ===== 行动路线图 ===== */}
+      <section id="roadmap" className="max-w-6xl mx-auto px-6 py-16">
+        <div className="mb-10">
+          <div className="flex items-center gap-3 mb-3">
+            <div className="w-1 h-8 bg-emerald-600 rounded-full" />
+            <h2 className="text-2xl font-black text-gray-900">三阶段行动路线图</h2>
+          </div>
+          <p className="text-gray-500 ml-4">从冷启动到规模化，每个阶段的核心任务与KPI目标</p>
+        </div>
+
+        <div className="space-y-6 mb-12">
+          {actionRoadmap.map((phase, i) => (
+            <div key={i} className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+              <div className="flex items-center gap-4 px-6 py-4" style={{ backgroundColor: phase.color + "10", borderBottom: `2px solid ${phase.color}20` }}>
+                <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-black text-lg" style={{ backgroundColor: phase.color }}>
+                  {i + 1}
                 </div>
                 <div>
-                  <h4 className="font-bold text-lg" style={{ fontFamily: "var(--font-heading)" }}>
-                    {phase.title}
-                  </h4>
-                  <span className="text-sm text-muted-foreground">{phase.period}</span>
-                </div>
-              </div>
-              <div className="p-6">
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div>
-                    <div className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-3">
-                      核心任务
-                    </div>
-                    <ul className="space-y-2">
-                      {phase.tasks.map((task, i) => (
-                        <li key={i} className="flex items-start gap-2 text-sm">
-                          <span className="w-5 h-5 rounded-full flex items-center justify-center text-xs font-medium shrink-0 mt-0.5"
-                            style={{ backgroundColor: phase.color + "15", color: phase.color }}>
-                            {i + 1}
-                          </span>
-                          <span className="text-muted-foreground">{task}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                  <div className="space-y-4">
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-2">
-                        关键KPI
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{phase.kpi}</p>
-                    </div>
-                    <div className="bg-muted/30 rounded-lg p-4">
-                      <div className="text-xs font-semibold text-muted-foreground tracking-wider uppercase mb-2">
-                        预算范围
-                      </div>
-                      <p className="text-sm font-medium text-foreground">{phase.budget}</p>
-                    </div>
+                  <div className="flex items-center gap-3">
+                    <h3 className="font-bold text-gray-900">{phase.title}</h3>
+                    <span className="text-xs px-2 py-0.5 rounded-full text-white font-medium" style={{ backgroundColor: phase.color }}>
+                      {phase.period}
+                    </span>
                   </div>
                 </div>
               </div>
-            </motion.div>
+              <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">核心任务</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                    {phase.tasks.map((task, j) => (
+                      <div key={j} className="flex items-start gap-2 text-sm text-gray-700">
+                        <div className="w-5 h-5 rounded flex items-center justify-center text-xs text-white flex-shrink-0 mt-0.5" style={{ backgroundColor: phase.color }}>
+                          {j + 1}
+                        </div>
+                        {task}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-2">阶段KPI目标</h4>
+                  <p className="text-sm text-gray-600 leading-relaxed">{phase.kpi}</p>
+                </div>
+              </div>
+            </div>
           ))}
         </div>
 
         {/* 收益估算 */}
-        <div className="bg-white rounded-xl border border-border p-6 shadow-sm">
-          <h3 className="text-lg font-semibold mb-1" style={{ fontFamily: "var(--font-heading)" }}>
-            收益估算模型
-          </h3>
-          <p className="text-sm text-muted-foreground mb-6">基于不同招生规模的年度收益预测</p>
-          <ResponsiveContainer width="100%" height={350}>
-            <AreaChart data={REVENUE_MODEL}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
-              <XAxis dataKey="students" tick={{ fontSize: 12 }} label={{ value: "年招生人数", position: "insideBottom", offset: -5, fontSize: 12 }} />
-              <YAxis tick={{ fontSize: 12 }} tickFormatter={(v) => `${(v / 10000).toFixed(0)}万`} />
-              <Tooltip
-                contentStyle={{ borderRadius: "8px", border: "1px solid #E5E7EB", fontSize: 13 }}
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = { totalRevenue: "总收入", annualProfit: "年利润" };
-                  return [`${(value / 10000).toFixed(1)}万元`, labels[name] || name];
-                }}
-                labelFormatter={(v) => `年招生 ${v} 人`}
-              />
-              <Legend formatter={(v) => v === "totalRevenue" ? "总收入" : "年利润"} />
-              <Area type="monotone" dataKey="totalRevenue" stroke="#1E3A5F" fill="#1E3A5F" fillOpacity={0.1} strokeWidth={2} />
-              <Area type="monotone" dataKey="annualProfit" stroke="#059669" fill="#059669" fillOpacity={0.15} strokeWidth={2} />
-            </AreaChart>
-          </ResponsiveContainer>
-          <div className="mt-4 overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 font-semibold">年招生</th>
-                  <th className="text-right py-2 px-3 font-semibold">单人佣金</th>
-                  <th className="text-right py-2 px-3 font-semibold">总收入</th>
-                  <th className="text-right py-2 px-3 font-semibold">月运营成本</th>
-                  <th className="text-right py-2 px-3 font-semibold">年利润</th>
-                  <th className="text-left py-2 px-3 font-semibold">阶段</th>
-                </tr>
-              </thead>
-              <tbody>
-                {REVENUE_MODEL.map((r) => (
-                  <tr key={r.students} className="border-b border-border/50 hover:bg-muted/30">
-                    <td className="py-2 px-3 font-medium">{r.students}人</td>
-                    <td className="py-2 px-3 text-right text-muted-foreground">{r.commission.toLocaleString()}元</td>
-                    <td className="py-2 px-3 text-right font-medium">{(r.totalRevenue / 10000).toFixed(1)}万</td>
-                    <td className="py-2 px-3 text-right text-muted-foreground">{(r.monthlyCost / 10000).toFixed(1)}万</td>
-                    <td className={`py-2 px-3 text-right font-semibold ${r.annualProfit >= 0 ? "text-[#059669]" : "text-red-500"}`}>
-                      {r.annualProfit >= 0 ? "+" : ""}{(r.annualProfit / 10000).toFixed(1)}万
-                    </td>
-                    <td className="py-2 px-3 text-muted-foreground">{r.note}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100">
+            <h3 className="font-bold text-gray-900">收益估算模型（基于4000元/人佣金）</h3>
           </div>
-        </div>
-
-        <InsightCard
-          title="年招生30人即可开始盈利"
-          content="按每人佣金4000元计算，年招生30人可实现总收入12万，扣除月均运营成本8000元后，年利润约2.4万。规模化至200人时，年利润可达58万。关键是前3-6个月的获客能力建设。"
-          color="amber"
-        />
-      </div>
-    </Section>
-  );
-}
-
-function Footer() {
-  return (
-    <footer className="bg-[#0B1426] text-white/60 py-12 lg:ml-56">
-      <div className="container max-w-5xl">
-        <div className="flex flex-col md:flex-row justify-between items-start gap-8">
-          <div>
-            <div className="text-white font-semibold text-lg mb-2" style={{ fontFamily: "var(--font-heading)" }}>
-              UCSI预科招生 · 国内市场深度调研报告
+          <div className="p-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={revenueChartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" />
+                  <XAxis dataKey="name" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip formatter={(v: number) => [`${v}万元`, ""]} />
+                  <Legend />
+                  <Bar dataKey="年营收" fill="#3B82F6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="年成本" fill="#F59E0B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="年利润" fill="#10B981" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50">
+                      {["情景", "月招生", "年招生", "年营收", "年成本", "年利润"].map((h) => (
+                        <th key={h} className="px-3 py-2 text-left text-xs font-semibold text-gray-500">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {revenueModel.map((r, i) => (
+                      <tr key={i} className="border-t border-gray-50">
+                        <td className="px-3 py-3 font-medium text-gray-900">{r.scenario}</td>
+                        <td className="px-3 py-3 text-gray-600">{r.monthly}人</td>
+                        <td className="px-3 py-3 text-gray-600">{r.annual}人</td>
+                        <td className="px-3 py-3 text-blue-600 font-semibold">{r.revenue}万</td>
+                        <td className="px-3 py-3 text-amber-600">{r.cost}万</td>
+                        <td className="px-3 py-3 font-bold text-emerald-600">{r.profit}万</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             </div>
-            <p className="text-sm max-w-md">
-              本报告基于公开数据、行业报告和实操案例整理，仅供决策参考。
-              数据截至2026年4月，市场情况可能随时间变化。
-            </p>
-          </div>
-          <div className="text-sm">
-            <div className="text-white/40 text-xs uppercase tracking-wider mb-2">数据来源</div>
-            <ul className="space-y-1">
-              <li>EMGS马来西亚教育全球服务中心</li>
-              <li>QS世界大学排名2026</li>
-              <li>中国教育部留学服务中心</li>
-              <li>行业公开报告与实操案例</li>
-            </ul>
           </div>
         </div>
-        <div className="h-px bg-white/10 my-8" />
-        <div className="text-xs text-white/30 text-center">
-          Report generated on April 2, 2026 · For internal decision-making use only
-        </div>
-      </div>
-    </footer>
-  );
-}
+      </section>
 
-export default function Home() {
-  return (
-    <div className="min-h-screen">
-      <SideNav />
-      <div className="lg:ml-56">
-        <HeroSection />
-        <MetricsBar />
-        <MarketSection />
-        <CompetitorSection />
-        <ChannelSection />
-        <PainPointSection />
-        <CostSection />
-        <UCSISection />
-        <ActionSection />
-        <Footer />
-      </div>
+      {/* Footer */}
+      <footer className="bg-slate-900 text-slate-400 py-8">
+        <div className="max-w-6xl mx-auto px-6 text-center">
+          <p className="text-sm">UCSI预科招生 · 国内市场深度调研报告 · 2025-2026</p>
+          <p className="text-xs mt-2 text-slate-500">数据来源：ICEF、启德教育、芥末堆、小红书官方、抖音官方等公开数据综合整理</p>
+        </div>
+      </footer>
     </div>
   );
 }
